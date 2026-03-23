@@ -4,17 +4,26 @@ import Candidate from "@/models/Candidate";
 import Expert from "@/models/Expert";
 import Match from "@/models/Match";
 import { findTopExperts } from "@/lib/matchingEngine";
+import { verifyToken } from "@/lib/auth";
 
 export async function POST(req) {
   try {
     await connectToDatabase();
+
+    const token = req.cookies.get("token")?.value;
+    const decoded = verifyToken(token);
+    
+    if (!decoded || !decoded.userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const { candidateId } = await req.json();
 
     if (!candidateId) {
       return NextResponse.json({ message: "Candidate ID required" }, { status: 400 });
     }
 
-    const candidate = await Candidate.findById(candidateId);
+    const candidate = await Candidate.findOne({ _id: candidateId, userId: decoded.userId });
     if (!candidate) {
       return NextResponse.json({ message: "Candidate not found" }, { status: 404 });
     }
@@ -23,7 +32,7 @@ export async function POST(req) {
       return NextResponse.json({ message: "Candidate has no extracted keywords" }, { status: 400 });
     }
 
-    const allExperts = await Expert.find({});
+    const allExperts = await Expert.find({ userId: decoded.userId });
     if (allExperts.length === 0) {
       return NextResponse.json({ message: "No experts available in the database" }, { status: 404 });
     }
@@ -39,6 +48,7 @@ export async function POST(req) {
       const existingMatch = await Match.findOne({
         candidateId: candidate._id,
         expertId: matchInfo.expert._id,
+        userId: decoded.userId,
       });
 
       if (!existingMatch) {
@@ -46,6 +56,7 @@ export async function POST(req) {
            candidateId: candidate._id,
            expertId: matchInfo.expert._id,
            matchScore: matchInfo.finalScore,
+           userId: decoded.userId,
          });
          // Populate virtual fields for frontend
          savedMatches.push({ ...matchInfo, id: newMatch._id });

@@ -22,6 +22,10 @@ const CandidateSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );

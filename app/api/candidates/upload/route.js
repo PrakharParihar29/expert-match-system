@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Candidate from "@/models/Candidate";
 import { extractTextFromFile, extractKeywords } from "@/lib/resumeParser";
+import { verifyToken } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -16,6 +17,13 @@ export async function POST(req) {
 
     if (!file || !name || !email) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+    }
+
+    const token = req.cookies.get("token")?.value;
+    const decoded = verifyToken(token);
+    
+    if (!decoded || !decoded.userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     // Check if duplicate candidate
@@ -47,6 +55,7 @@ export async function POST(req) {
       resumeFile: `/uploads/${filename}`,
       extractedText,
       keywords,
+      userId: decoded.userId,
     });
 
     return NextResponse.json({ message: "Candidate processed successfully", candidate }, { status: 201 });

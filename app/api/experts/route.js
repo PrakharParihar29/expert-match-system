@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Expert from "@/models/Expert";
+import { verifyToken } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req) {
   try {
     await connectToDatabase();
-    const experts = await Expert.find({}).sort({ createdAt: -1 });
+
+    const token = req.cookies.get("token")?.value;
+    const decoded = verifyToken(token);
+    
+    if (!decoded || !decoded.userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const experts = await Expert.find({ userId: decoded.userId }).sort({ createdAt: -1 });
     return NextResponse.json(experts, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: "Server error", error: error.message }, { status: 500 });
@@ -15,6 +24,14 @@ export async function GET() {
 export async function POST(req) {
   try {
     await connectToDatabase();
+
+    const token = req.cookies.get("token")?.value;
+    const decoded = verifyToken(token);
+    
+    if (!decoded || !decoded.userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     
     // Check if email already exists
@@ -29,7 +46,7 @@ export async function POST(req) {
       expertiseKeywords = expertiseKeywords.split(",").map(k => k.trim());
     }
 
-    const expert = await Expert.create({ ...body, expertiseKeywords });
+    const expert = await Expert.create({ ...body, expertiseKeywords, userId: decoded.userId });
     return NextResponse.json({ message: "Expert added successfully", expert }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ message: "Server error", error: error.message }, { status: 500 });

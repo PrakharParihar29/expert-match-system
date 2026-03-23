@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Briefcase, Network, Activity } from "lucide-react";
+import { Users, Briefcase, Network, Clock } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -42,7 +42,7 @@ export default function DashboardPage() {
     { title: "Total Experts", value: stats.totalExperts, icon: Briefcase, color: "bg-blue-500" },
     { title: "Total Candidates", value: stats.totalCandidates, icon: Users, color: "bg-emerald-500" },
     { title: "Total Matches", value: stats.totalMatches, icon: Network, color: "bg-indigo-500" },
-    { title: "System Health", value: "99.9%", icon: Activity, color: "bg-rose-500" },
+    { title: "Pending Candidates", value: stats.pendingCandidates, icon: Clock, color: "bg-rose-500" },
   ];
 
   return (

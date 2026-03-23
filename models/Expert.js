@@ -19,6 +19,10 @@ const ExpertSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );

@@ -5,7 +5,7 @@ export async function middleware(req) {
   const token = req.cookies.get("token")?.value;
   const { pathname } = req.nextUrl;
 
-  const publicRoutes = ["/login", "/api/auth/login"];
+  const publicRoutes = ["/login", "/register", "/api/auth/login", "/api/auth/register"];
 
   if (publicRoutes.includes(pathname)) {
     if (token) {

@@ -35,7 +35,7 @@ export async function POST(req) {
       return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
     }
 
-    const payload = { userId: user._id, role: user.role };
+    const payload = { userId: user._id, role: user.role, name: user.name, email: user.email };
     const token = signToken(payload);
 
     const response = NextResponse.json({ message: "Login successful", user: { name: user.name, email: user.email } }, { status: 200 });

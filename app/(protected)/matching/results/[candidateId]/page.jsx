@@ -8,24 +8,41 @@ import { ArrowLeft, CheckCircle2, Mail, BadgeCheck, Users } from "lucide-react";
 export default function MatchingResultsPage() {
   const { candidateId } = useParams();
   const [data, setData] = useState(null);
+  const [candidate, setCandidate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sendingAlert, setSendingAlert] = useState(false);
   const [selectedExperts, setSelectedExperts] = useState([]);
 
   useEffect(() => {
-    // We already ran the match generator when clicking "Find Best Match",
-    // but we can re-fetch or re-run it safely since it updates matches in DB.
-    fetch("/api/match", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ candidateId }),
-    })
+    // Fetch candidate info
+    fetch(`/api/candidates/${candidateId}`)
+      .then((res) => res.json())
+      .then((cand) => setCandidate(cand))
+      .catch((err) => console.error(err));
+
+    // Fetch matches
+    fetch(`/api/match/${candidateId}`)
       .then((res) => res.json())
       .then((resData) => {
-        setData(resData);
-        // Default select all top 4
         if (resData.topMatches) {
-          setSelectedExperts(resData.topMatches.map(m => m.expert));
+          setData(resData);
+          // Default select all top 4
+          setSelectedExperts(resData.topMatches.slice(0, 4).map(m => m.expert));
+        } else {
+          // If no matches, run the matching
+          fetch("/api/match", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ candidateId }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              setData(data);
+              if (data.topMatches) {
+                setSelectedExperts(data.topMatches.slice(0, 4).map(m => m.expert));
+              }
+              setLoading(false);
+            });
         }
         setLoading(false);
       });
@@ -51,7 +68,7 @@ export default function MatchingResultsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          candidate: data.candidate,
+          candidate: candidate,
           experts: selectedExperts,
         }),
       });
@@ -89,8 +106,15 @@ export default function MatchingResultsPage() {
             <ArrowLeft className="w-4 h-4" /> Back to Selection
           </Link>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Matching Results</h1>
+          {candidate && (
+            <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+              <h2 className="font-semibold text-gray-800">{candidate.name}</h2>
+              <p className="text-sm text-gray-600">{candidate.email}</p>
+              <p className="text-sm text-gray-600">Keywords: {candidate.keywords?.join(", ")}</p>
+            </div>
+          )}
           <p className="text-gray-500 mt-1">
-            Top experts found for candidate <span className="font-semibold text-gray-800">{data.candidate.name}</span>
+            Top experts matched for this candidate
           </p>
         </div>
         <button

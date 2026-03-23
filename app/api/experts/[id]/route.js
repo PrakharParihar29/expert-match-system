@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Expert from "@/models/Expert";
+import { verifyToken } from "@/lib/auth";
 
 export async function PUT(req, { params }) {
   try {
     await connectToDatabase();
+    const token = req.cookies.get("token")?.value;
+    const decoded = verifyToken(token);
+    if (!decoded || !decoded.userId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
     const id = (await params).id;
     const body = await req.json();
 
@@ -12,7 +17,7 @@ export async function PUT(req, { params }) {
       body.expertiseKeywords = body.expertiseKeywords.split(",").map((k) => k.trim());
     }
 
-    const updated = await Expert.findByIdAndUpdate(id, body, { new: true });
+    const updated = await Expert.findOneAndUpdate({ _id: id, userId: decoded.userId }, body, { new: true });
     if (!updated) {
       return NextResponse.json({ message: "Expert not found" }, { status: 404 });
     }
@@ -26,8 +31,12 @@ export async function PUT(req, { params }) {
 export async function DELETE(req, { params }) {
   try {
     await connectToDatabase();
+    const token = req.cookies.get("token")?.value;
+    const decoded = verifyToken(token);
+    if (!decoded || !decoded.userId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
     const id = (await params).id;
-    const deleted = await Expert.findByIdAndDelete(id);
+    const deleted = await Expert.findOneAndDelete({ _id: id, userId: decoded.userId });
     if (!deleted) {
       return NextResponse.json({ message: "Expert not found" }, { status: 404 });
     }

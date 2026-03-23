@@ -3,17 +3,35 @@ import connectToDatabase from "@/lib/mongodb";
 import Expert from "@/models/Expert";
 import Candidate from "@/models/Candidate";
 import Match from "@/models/Match";
+import { verifyToken } from "@/lib/auth";
+import mongoose from "mongoose";
 
-export async function GET() {
+export async function GET(req) {
   try {
     await connectToDatabase();
 
-    const totalExperts = await Expert.countDocuments();
-    const totalCandidates = await Candidate.countDocuments();
-    const totalMatches = await Match.countDocuments();
+    const token = req.cookies.get("token")?.value;
+    const decoded = verifyToken(token);
+    
+    if (!decoded || !decoded.userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const { userId } = decoded;
+
+    const totalExperts = await Expert.countDocuments({ userId });
+    const totalCandidates = await Candidate.countDocuments({ userId });
+    const totalMatches = await Match.countDocuments({ userId });
+
+    // Pending candidates (candidates who have zero matches)
+    const matchedCandidateIds = await Match.distinct("candidateId", { userId });
+    const pendingCandidates = await Candidate.countDocuments({ 
+      userId, 
+      _id: { $nin: matchedCandidateIds } 
+    });
 
     // Expertise frequency (for word cloud or chart)
-    const experts = await Expert.find({}, "expertiseKeywords");
+    const experts = await Expert.find({ userId }, "expertiseKeywords");
     const keywordMap = {};
     experts.forEach((expert) => {
       expert.expertiseKeywords.forEach((kw) => {
@@ -29,13 +47,14 @@ export async function GET() {
       .slice(0, 10);
 
     // Latest candidates
-    const recentCandidates = await Candidate.find({})
+    const recentCandidates = await Candidate.find({ userId })
       .sort({ createdAt: -1 })
       .limit(5);
 
     // Count matches grouped by Date (last 7 days simulation roughly)
     // Mongoose aggregation for timeseries
     const matchTrends = await Match.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -51,6 +70,7 @@ export async function GET() {
       totalExperts,
       totalCandidates,
       totalMatches,
+      pendingCandidates,
       topExpertise,
       recentCandidates,
       trendData,
