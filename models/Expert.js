@@ -9,7 +9,6 @@ const ExpertSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
     },
     expertiseKeywords: {
       type: [String],
@@ -26,5 +25,7 @@ const ExpertSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+ExpertSchema.index({ userId: 1, email: 1 }, { unique: true });
 
 export default mongoose.models.Expert || mongoose.model("Expert", ExpertSchema);

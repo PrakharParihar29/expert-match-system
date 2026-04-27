@@ -9,7 +9,6 @@ const CandidateSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
     },
     resumeFile: {
       type: String, // Path or filename
@@ -29,6 +28,8 @@ const CandidateSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+CandidateSchema.index({ userId: 1, email: 1 }, { unique: true });
 
 export default mongoose.models.Candidate ||
   mongoose.model("Candidate", CandidateSchema);
