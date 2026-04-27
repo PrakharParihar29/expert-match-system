@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Mail, BadgeCheck, Users } from "lucide-react";
 
@@ -12,8 +12,26 @@ export default function MatchingResultsPage() {
   const [loading, setLoading] = useState(true);
   const [sendingAlert, setSendingAlert] = useState(false);
   const [selectedExperts, setSelectedExperts] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [profileError, setProfileError] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
+    fetch("/api/auth/profile")
+      .then(async (res) => {
+        const payload = await res.json();
+        if (!res.ok) {
+          setProfileError(payload.message || "Unable to load profile.");
+        } else {
+          setProfile(payload);
+        }
+      })
+      .catch(() => {
+        setProfileError("Unable to load profile.");
+      })
+      .finally(() => {
+        setProfileLoading(false);
+      });
     // Fetch candidate info
     fetch(`/api/candidates/${candidateId}`)
       .then((res) => res.json())
@@ -27,7 +45,8 @@ export default function MatchingResultsPage() {
         if (resData.topMatches) {
           setData(resData);
           // Default select all top 4
-          setSelectedExperts(resData.topMatches.slice(0, 4).map(m => m.expert));
+          const validMatches = resData.topMatches.filter(m => m && m.expert);
+          setSelectedExperts(validMatches.slice(0, 4).map(m => m.expert));
         } else {
           // If no matches, run the matching
           fetch("/api/match", {
@@ -39,7 +58,8 @@ export default function MatchingResultsPage() {
             .then((data) => {
               setData(data);
               if (data.topMatches) {
-                setSelectedExperts(data.topMatches.slice(0, 4).map(m => m.expert));
+                const validMatches = data.topMatches.filter(m => m && m.expert);
+                setSelectedExperts(validMatches.slice(0, 4).map(m => m.expert));
               }
               setLoading(false);
             });
@@ -75,7 +95,8 @@ export default function MatchingResultsPage() {
       if (res.ok) {
         alert("Emails sent successfully to the selected experts!");
       } else {
-        alert("Some emails failed to send. Check console.");
+        const payload = await res.json().catch(() => null);
+        alert(payload?.message || "Some emails failed to send. Check console.");
       }
     } catch (err) {
       console.error(err);
@@ -113,7 +134,34 @@ export default function MatchingResultsPage() {
               <p className="text-sm text-gray-600">Keywords: {candidate.keywords?.join(", ")}</p>
             </div>
           )}
-          <p className="text-gray-500 mt-1">
+
+          <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Email settings</h3>
+            {profileLoading ? (
+              <p className="text-sm text-gray-500">Loading your profile settings...</p>
+            ) : profileError ? (
+              <p className="text-sm text-red-500">{profileError}</p>
+            ) : profile?.senderEmail ? (
+              <div>
+                <p className="text-sm text-gray-700">Using sender email:</p>
+                <p className="font-medium text-gray-900">{profile.senderEmail}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  If you need to change this, update it in your <Link href="/profile" className="text-indigo-600 hover:text-indigo-800 underline">Profile settings</Link>.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-gray-500">
+                  Your sender email and Gmail app password are not set yet.
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Go to <Link href="/profile" className="text-indigo-600 hover:text-indigo-800 underline">Profile settings</Link> to configure them once.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <p className="text-gray-500 mt-4">
             Top experts matched for this candidate
           </p>
         </div>
@@ -138,7 +186,7 @@ export default function MatchingResultsPage() {
           Candidate Extracted Signature (TF-IDF Vector Base)
         </h3>
         <div className="flex flex-wrap gap-2">
-          {data.candidate.keywords.map((kw, idx) => (
+          {data.candidate?.keywords?.map((kw, idx) => (
              <span key={idx} className="bg-white border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full text-xs shadow-sm font-medium">
                {kw}
              </span>
@@ -148,7 +196,9 @@ export default function MatchingResultsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {data.topMatches.map((match, index) => {
-          const isSelected = selectedExperts.find((e) => e._id === match.expert._id);
+          if (!match || !match.expert) return null;
+          
+          const isSelected = selectedExperts.find((e) => e && e._id === match.expert._id);
           const scorePercent = Math.round(match.finalScore * 100);
 
           return (

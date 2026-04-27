@@ -2,14 +2,20 @@ import { NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Match from "@/models/Match";
 import Expert from "@/models/Expert";
+import Candidate from "@/models/Candidate";
 
 export async function GET(req, { params }) {
   try {
     await connectToDatabase();
-    const { candidateId } = params;
+    const { candidateId } = await params;
 
     if (!candidateId) {
       return NextResponse.json({ message: "Candidate ID required" }, { status: 400 });
+    }
+
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return NextResponse.json({ message: "Candidate not found" }, { status: 404 });
     }
 
     // Fetch matches for this candidate, sorted by matchScore descending
@@ -30,10 +36,11 @@ export async function GET(req, { params }) {
 
     return NextResponse.json({
       candidateId,
+      candidate,
       topMatches,
       message: "Matches retrieved successfully"
     }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: "Server error", error: error.message }, { status: 500 });
   }
-}
+}

@@ -19,6 +19,14 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: "admin",
     },
+    senderEmail: {
+      type: String,
+      default: "",
+    },
+    senderAppPassword: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
