@@ -35,7 +35,7 @@ export async function POST(req) {
     const body = await req.json();
     
     // Check if email already exists
-    const existing = await Expert.findOne({ email: body.email });
+    const existing = await Expert.findOne({ email: body.email, userId: decoded.userId });
     if (existing) {
       return NextResponse.json({ message: "Expert already exists with this email" }, { status: 400 });
     }

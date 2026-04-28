@@ -27,7 +27,7 @@ export async function POST(req) {
     }
 
     // Check if duplicate candidate
-    const existing = await Candidate.findOne({ email });
+    const existing = await Candidate.findOne({ email, userId: decoded.userId });
     if (existing) {
       return NextResponse.json({ message: "Candidate with this email already exists" }, { status: 400 });
     }
@@ -36,11 +36,16 @@ export async function POST(req) {
     const buffer = Buffer.from(bytes);
 
     // Save File locally (simplified for local development approach)
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true }).catch(console.error);
     const filename = `${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
-    const filepath = path.join(uploadsDir, filename);
-    await writeFile(filepath, buffer);
+    try {
+      const isProduction = process.env.NODE_ENV === "production";
+      const uploadsDir = isProduction ? "/tmp" : path.join(process.cwd(), "public", "uploads");
+      await mkdir(uploadsDir, { recursive: true });
+      const filepath = path.join(uploadsDir, filename);
+      await writeFile(filepath, buffer);
+    } catch (fileError) {
+      console.warn("Could not save file to disk:", fileError);
+    }
 
     // Parse text
     const extractedText = await extractTextFromFile(buffer, file.type);
