@@ -49,6 +49,14 @@ export async function POST(req) {
 
     return response;
   } catch (error) {
-    return NextResponse.json({ message: "Server error", error: error.message }, { status: 500 });
+    console.error("Login error:", error.message, error.stack);
+    const isConnectionError = error.message?.includes("ECONNREFUSED") || 
+                               error.message?.includes("serverSelection") ||
+                               error.message?.includes("connect ETIMEDOUT") ||
+                               error.name === "MongoServerSelectionError";
+    const message = isConnectionError 
+      ? "Database connection failed. Please try again later." 
+      : "Server error";
+    return NextResponse.json({ message, error: error.message }, { status: 500 });
   }
 }
